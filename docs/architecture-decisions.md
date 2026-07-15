@@ -48,3 +48,19 @@
 - Verification: command-runner, traversal, timeout, and immutable-evidence tests cover the
   implemented controls; every report repeats the residual-risk warning.
 - Follow-up: use this only with trusted or controlled model outputs on a local/CI machine.
+
+## 2026-07-14 — Alpha version mapping and single package source
+
+- Project: Verilog Verification Agent.
+- Decision or fact: the existing public Git tag remains `v0.1.0-alpha`, while the equivalent
+  PEP 440 Python distribution version is `0.1.0a1`. `pyproject.toml` is the only manually
+  maintained package-version source; `verilog_agent.__version__` reads installed distribution
+  metadata.
+- Context: the original `0.1.0` package metadata incorrectly implied a final release and a
+  second handwritten value in `__init__.py` could drift.
+- Alternatives considered: moving the published Git tag was disallowed; duplicating the value
+  in package source with only a consistency test was less robust.
+- Verification: a unit test compares the public package attribute, installed metadata, and
+  expected PEP 440 value; wheel smoke tests import the package outside the repository.
+- Follow-up: future releases update the version only in `pyproject.toml`, then create a new Git
+  tag after the release commit rather than rewriting an existing remote tag.

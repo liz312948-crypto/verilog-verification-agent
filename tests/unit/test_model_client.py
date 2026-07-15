@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -13,6 +14,7 @@ from verilog_agent.model_client import (
     clean_and_validate_model_output,
 )
 from verilog_agent.models import Diagnostic, DiagnosticKind
+from verilog_agent.spec import CircuitKind
 
 VALID_MUX = "module mux2(input a, input b, input sel, output y); assign y=sel?b:a; endmodule"
 
@@ -21,6 +23,37 @@ def test_removes_single_markdown_fence() -> None:
     fence = chr(96) * 3
     raw = f"{fence}verilog\n{VALID_MUX}\n{fence}"
     assert clean_and_validate_model_output(raw, "mux2") == VALID_MUX + "\n"
+
+
+@pytest.mark.parametrize("kind", list(CircuitKind))
+def test_accepts_exact_port_contract_for_all_supported_circuits(
+    repository_root: Path, kind: CircuitKind
+) -> None:
+    spec = build_spec(kind)
+    source = (repository_root / "examples" / "correct" / f"{kind.value}.v").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        clean_and_validate_model_output(source, spec.module_name, spec.port_contract)
+        == source.strip() + "\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "module mux2(input a, input b, input sel, input extra, output y); "
+        "assign y=sel?b:a; endmodule",
+        "module mux2(input [1:0] a, input b, input sel, output y); "
+        "assign y=sel?b:a[0]; endmodule",
+        "module mux2(output a, input b, input sel, output y); "
+        "assign y=sel?b:a; endmodule",
+    ],
+)
+def test_rejects_incorrect_port_contract(source: str) -> None:
+    spec = build_spec()
+    with pytest.raises(InvalidModelOutputError, match="port contract"):
+        clean_and_validate_model_output(source, spec.module_name, spec.port_contract)
 
 
 @pytest.mark.parametrize(

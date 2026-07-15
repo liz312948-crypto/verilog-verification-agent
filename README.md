@@ -1,5 +1,15 @@
 # Verilog Verification Agent
 
+[![CI](https://github.com/liz312948-crypto/verilog-verification-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/liz312948-crypto/verilog-verification-agent/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Version: v0.1.0-alpha](https://img.shields.io/badge/Version-v0.1.0--alpha-orange.svg)
+
+Current version identity: Git tag `v0.1.0-alpha`; Python distribution version `0.1.0a1`.
+The PEP 440 package version is maintained in `pyproject.toml` and exposed as
+`verilog_agent.__version__` from installed distribution metadata. This repository does not
+claim a PyPI release.
+
 Verilog Verification Agent is a deliberately small, testable harness that turns a validated
 JSON circuit specification into an independently generated testbench, asks a model for only
 the DUT, runs real Icarus compilation and simulation, and permits at most three repairs. Every
@@ -165,7 +175,7 @@ marker.
 
     .\.venv\Scripts\python.exe -m pytest
     .\.venv\Scripts\python.exe -m ruff check .
-    .\.venv\Scripts\python.exe -m mypy src
+    .\.venv\Scripts\python.exe -m mypy src tests
     .\.venv\Scripts\python.exe -m compileall -q src tests
 
 Unit tests do not need Icarus. Integration and E2E tests use real iverilog and vvp and are
@@ -177,7 +187,9 @@ CI installs Icarus on Ubuntu and runs every non-live test.
 The harness checks executable availability before calling a model, creates one
 repository-confined output workspace per task, uses fixed argv lists with shell disabled,
 sets separate compiler and simulator timeouts, caps captured logs, validates a single expected
-module, and rejects include directives plus obvious system/file/VPI/PLI/DPI constructs.
+module and its exact fixed port contract, and rejects include directives plus obvious
+system/file/VPI/PLI/DPI constructs. Invalid raw model responses are represented in evidence by
+a SHA-256 digest rather than being copied verbatim into run artifacts.
 
 These controls are not a complete OS sandbox. Icarus and generated code still execute as local
 processes. Do not expose this project as a public arbitrary-untrusted-code execution service.

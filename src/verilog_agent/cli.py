@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from verilog_agent.errors import (
+    InfrastructureError,
     ModelClientError,
     SpecValidationError,
     WorkspaceError,
@@ -129,6 +130,9 @@ def main(argv: list[str] | None = None) -> int:
     except (SpecValidationError, WorkspaceError) as exc:
         print(f"INVALID_SPEC: {exc}", file=sys.stderr)
         return EXIT_INVALID_INPUT
+    except InfrastructureError as exc:
+        print(f"INFRASTRUCTURE_ERROR: {exc}", file=sys.stderr)
+        return EXIT_INFRASTRUCTURE
     except ModelClientError as exc:
         print(f"INFRASTRUCTURE_ERROR: {exc}", file=sys.stderr)
         return EXIT_INFRASTRUCTURE

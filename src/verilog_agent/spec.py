@@ -62,6 +62,58 @@ class Mode(StrEnum):
     REPAIR = "repair"
 
 
+PortContract = tuple[tuple[str, str, int], ...]
+
+CIRCUIT_PORT_CONTRACTS: dict[CircuitKind, PortContract] = {
+    CircuitKind.MUX2: (
+        ("a", "input", 1),
+        ("b", "input", 1),
+        ("sel", "input", 1),
+        ("y", "output", 1),
+    ),
+    CircuitKind.ADDER4: (
+        ("a", "input", 4),
+        ("b", "input", 4),
+        ("cin", "input", 1),
+        ("sum", "output", 4),
+        ("cout", "output", 1),
+    ),
+    CircuitKind.COUNTER4: (
+        ("clk", "input", 1),
+        ("reset", "input", 1),
+        ("enable", "input", 1),
+        ("count", "output", 4),
+    ),
+    CircuitKind.SHIFT_REGISTER4: (
+        ("clk", "input", 1),
+        ("reset", "input", 1),
+        ("enable", "input", 1),
+        ("serial_in", "input", 1),
+        ("q", "output", 4),
+    ),
+    CircuitKind.RISING_EDGE_DETECTOR: (
+        ("clk", "input", 1),
+        ("reset", "input", 1),
+        ("signal_in", "input", 1),
+        ("pulse", "output", 1),
+    ),
+    CircuitKind.SEQUENCE_DETECTOR_1011: (
+        ("clk", "input", 1),
+        ("reset", "input", 1),
+        ("serial_in", "input", 1),
+        ("detected", "output", 1),
+    ),
+    CircuitKind.ALU4: (
+        ("a", "input", 4),
+        ("b", "input", 4),
+        ("op", "input", 3),
+        ("result", "output", 4),
+        ("carry", "output", 1),
+        ("zero", "output", 1),
+    ),
+}
+
+
 @dataclass(frozen=True)
 class TaskSpec:
     schema_version: str
@@ -98,6 +150,10 @@ class TaskSpec:
     @property
     def max_attempts(self) -> int:
         return 1 + self.max_repair_retries
+
+    @property
+    def port_contract(self) -> PortContract:
+        return CIRCUIT_PORT_CONTRACTS[self.circuit_kind]
 
     def to_dict(self, *, include_hash: bool = False) -> dict[str, Any]:
         result: dict[str, Any] = {

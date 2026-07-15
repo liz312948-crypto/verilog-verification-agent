@@ -1,19 +1,21 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "verilog-verification-agent"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "A bounded and auditable Verilog generation and repair verification harness"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "Verilog Verification Agent contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
   "mypy>=1.10",
   "pytest>=8.0",
   "ruff>=0.5",

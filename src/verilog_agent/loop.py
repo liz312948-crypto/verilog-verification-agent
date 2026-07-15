@@ -37,6 +37,10 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8", errors="replace")).hexdigest()
 
 
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -156,16 +160,20 @@ class VerificationLoop:
 
             try:
                 current_rtl = clean_and_validate_model_output(
-                    current_raw, spec.module_name
+                    current_raw, spec.module_name, spec.port_contract
                 )
                 attempt_path.write_text(current_rtl, encoding="utf-8")
-                rtl_sha = _sha256_text(current_rtl)
+                rtl_sha = _sha256_file(attempt_path)
             except InvalidModelOutputError as exc:
                 current_rtl = raw_for_evidence
-                attempt_path.write_text(raw_for_evidence, encoding="utf-8")
+                safe_evidence = (
+                    "// VVA_INVALID_MODEL_OUTPUT: raw response intentionally not persisted\n"
+                    f"// model_response_sha256: {response_sha}\n"
+                )
+                attempt_path.write_text(safe_evidence, encoding="utf-8")
                 _write_command_logs(output_dir, attempt_number, "compile", "", "")
                 _write_command_logs(output_dir, attempt_number, "simulation", "", "")
-                rtl_sha = _sha256_text(raw_for_evidence)
+                rtl_sha = _sha256_file(attempt_path)
                 last_diagnostic = Diagnostic(
                     kind=DiagnosticKind.INVALID_MODEL_OUTPUT,
                     message=str(exc),
@@ -296,11 +304,16 @@ class VerificationLoop:
             if report.failure_kind
             else (last_diagnostic.kind if last_diagnostic else DiagnosticKind.INTERNAL_ERROR)
         )
+        status = (
+            FinalStatus.INFRASTRUCTURE_ERROR
+            if kind is DiagnosticKind.INFRASTRUCTURE_ERROR
+            else FinalStatus.FAILED
+        )
         return self._finish(
             report,
             output_dir,
             started_clock,
-            FinalStatus.FAILED,
+            status,
             kind,
             reason,
         )

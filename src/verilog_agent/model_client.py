@@ -11,7 +11,7 @@ from typing import Any, Protocol
 from verilog_agent.errors import InvalidModelOutputError, ModelClientError
 from verilog_agent.models import Diagnostic
 from verilog_agent.prompts import generation_prompt, repair_prompt
-from verilog_agent.spec import TaskSpec
+from verilog_agent.spec import PortContract, TaskSpec
 
 MAX_MODEL_OUTPUT_CHARS = 100_000
 MODULE_RE = re.compile(r"\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)\b", re.IGNORECASE)
@@ -31,6 +31,17 @@ FORBIDDEN_RE = re.compile(
     r"(?:\btb|\$root)\s*\.|\b(?:import|export)\s+\"DPI|\b(?:VPI|PLI)\b)",
     re.IGNORECASE,
 )
+IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*")
+PORT_DECLARATION_KEYWORDS = {
+    "input",
+    "output",
+    "inout",
+    "wire",
+    "reg",
+    "logic",
+    "signed",
+    "unsigned",
+}
 
 
 class ModelClient(Protocol):
@@ -51,7 +62,109 @@ def _without_comments(source: str) -> str:
     return re.sub(r"//[^\r\n]*", "", source)
 
 
-def clean_and_validate_model_output(raw: str, module_name: str) -> str:
+def _module_port_header(source: str, module_name: str) -> str:
+    declaration = re.search(
+        rf"\bmodule\s+{re.escape(module_name)}\b", source, flags=re.IGNORECASE
+    )
+    if declaration is None:
+        raise InvalidModelOutputError("could not locate target module declaration")
+    position = declaration.end()
+    while position < len(source) and source[position].isspace():
+        position += 1
+    if position < len(source) and source[position] == "#":
+        raise InvalidModelOutputError("parameterized module headers are not supported")
+    if position >= len(source) or source[position] != "(":
+        raise InvalidModelOutputError("module must use an ANSI-style parenthesized port list")
+
+    start = position + 1
+    depth = 1
+    position = start
+    while position < len(source) and depth:
+        if source[position] == "(":
+            depth += 1
+        elif source[position] == ")":
+            depth -= 1
+        position += 1
+    if depth:
+        raise InvalidModelOutputError("module port list is not balanced")
+    header = source[start : position - 1]
+    while position < len(source) and source[position].isspace():
+        position += 1
+    if position >= len(source) or source[position] != ";":
+        raise InvalidModelOutputError("module port list must end with a semicolon")
+    return header
+
+
+def _split_port_declarations(header: str) -> list[str]:
+    declarations: list[str] = []
+    current: list[str] = []
+    square_depth = 0
+    paren_depth = 0
+    for character in header:
+        if character == "[":
+            square_depth += 1
+        elif character == "]":
+            square_depth -= 1
+        elif character == "(":
+            paren_depth += 1
+        elif character == ")":
+            paren_depth -= 1
+        if square_depth < 0 or paren_depth < 0:
+            raise InvalidModelOutputError("module port declaration is not balanced")
+        if character == "," and square_depth == 0 and paren_depth == 0:
+            declarations.append("".join(current).strip())
+            current = []
+        else:
+            current.append(character)
+    if square_depth or paren_depth:
+        raise InvalidModelOutputError("module port declaration is not balanced")
+    declarations.append("".join(current).strip())
+    if any(not declaration for declaration in declarations):
+        raise InvalidModelOutputError("module port list contains an empty declaration")
+    return declarations
+
+
+def _parse_port_contract(source: str, module_name: str) -> PortContract:
+    header = _module_port_header(source, module_name)
+    direction: str | None = None
+    width = 1
+    ports: list[tuple[str, str, int]] = []
+    for declaration in _split_port_declarations(header):
+        if "\\" in declaration:
+            raise InvalidModelOutputError("escaped port identifiers are not supported")
+        direction_match = re.search(r"\b(input|output|inout)\b", declaration, re.IGNORECASE)
+        if direction_match:
+            direction = direction_match.group(1).lower()
+            width = 1
+        if direction is None:
+            raise InvalidModelOutputError("every port must have an ANSI direction")
+
+        ranges = re.findall(r"\[([^\]]+)\]", declaration)
+        if ranges:
+            if len(ranges) != 1:
+                raise InvalidModelOutputError("multidimensional ports are not supported")
+            range_match = re.fullmatch(r"\s*(\d+)\s*:\s*(\d+)\s*", ranges[0])
+            if range_match is None:
+                raise InvalidModelOutputError("port widths must use fixed numeric ranges")
+            width = abs(int(range_match.group(1)) - int(range_match.group(2))) + 1
+
+        without_ranges = re.sub(r"\[[^\]]+\]", " ", declaration)
+        identifiers = [
+            token
+            for token in IDENTIFIER_RE.findall(without_ranges)
+            if token.lower() not in PORT_DECLARATION_KEYWORDS
+        ]
+        if len(identifiers) != 1:
+            raise InvalidModelOutputError("each port declaration must contain one port name")
+        ports.append((identifiers[0], direction, width))
+    return tuple(ports)
+
+
+def clean_and_validate_model_output(
+    raw: str,
+    module_name: str,
+    expected_port_contract: PortContract | None = None,
+) -> str:
     if not isinstance(raw, str) or not raw.strip():
         raise InvalidModelOutputError("model response is empty")
     if len(raw) > MAX_MODEL_OUTPUT_CHARS:
@@ -77,6 +190,13 @@ def clean_and_validate_model_output(raw: str, module_name: str) -> str:
         raise InvalidModelOutputError(
             f"model response contains forbidden construct {forbidden.group(0)!r}"
         )
+    if expected_port_contract is not None:
+        actual_port_contract = _parse_port_contract(uncommented, module_name)
+        if actual_port_contract != expected_port_contract:
+            raise InvalidModelOutputError(
+                "module port contract does not match the structured specification: "
+                f"expected {expected_port_contract!r}, got {actual_port_contract!r}"
+            )
     return value + "\n"
 
 

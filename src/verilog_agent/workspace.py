@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from verilog_agent.errors import WorkspaceError
+from verilog_agent.errors import InfrastructureError, WorkspaceError
 
 MAX_RTL_BYTES = 256 * 1024
 
@@ -16,6 +16,10 @@ def resolve_repository_path(repository_root: Path, value: str, *, must_exist: bo
     candidate_value = Path(value)
     if candidate_value.is_absolute():
         raise WorkspaceError(f"absolute paths are not allowed: {value}")
+    if candidate_value.drive:
+        raise WorkspaceError(f"drive-qualified paths are not allowed: {value}")
+    if candidate_value.root:
+        raise WorkspaceError(f"rooted paths are not allowed: {value}")
     if ".." in candidate_value.parts:
         raise WorkspaceError(f"path traversal is not allowed: {value}")
     root = repository_root.resolve()
@@ -31,13 +35,20 @@ def resolve_repository_path(repository_root: Path, value: str, *, must_exist: bo
 
 def prepare_output_directory(repository_root: Path, value: str) -> Path:
     output = resolve_repository_path(repository_root, value, must_exist=False)
-    if output.exists() and not output.is_dir():
-        raise WorkspaceError(f"output path is not a directory: {value}")
-    if output.exists() and any(output.iterdir()):
-        raise WorkspaceError(
-            f"output directory is not empty; refusing to overwrite evidence: {value}"
-        )
-    output.mkdir(parents=True, exist_ok=True)
+    try:
+        if output.exists() and not output.is_dir():
+            raise WorkspaceError(f"output path is not a directory: {value}")
+        if output.exists() and any(output.iterdir()):
+            raise WorkspaceError(
+                f"output directory is not empty; refusing to overwrite evidence: {value}"
+            )
+        output.mkdir(parents=True, exist_ok=True)
+    except WorkspaceError:
+        raise
+    except OSError as exc:
+        raise InfrastructureError(
+            f"could not prepare output directory {value!r}: {type(exc).__name__}: {exc}"
+        ) from exc
     return output
 
 

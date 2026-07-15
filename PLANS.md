@@ -67,6 +67,28 @@ Last updated: 2026-07-14
 - [x] Review `git diff`, repository boundary, retry limits, testbench independence, shell safety, path safety, secret handling, and evidence integrity.
 - [x] Update this plan so completed work is not left as an unexecuted plan.
 
+### Phase 7: v0.1.0-alpha release-readiness audit
+
+- [x] Confirm the worktree started clean at tag `v0.1.0-alpha` and commit
+  `06460e5aa9e9af84b2b75e61c169acb2181a28fd` without moving the tag.
+- [x] Normalize the Python distribution version to PEP 440 `0.1.0a1` and expose
+  `verilog_agent.__version__` from installed distribution metadata.
+- [x] Add exact seven-circuit DUT port-contract validation and regression tests.
+- [x] Classify output-directory creation failures as infrastructure errors and harden Windows
+  drive-qualified/rooted path rejection.
+- [x] Retain invalid model-response hashes without persisting the raw rejected response.
+- [x] Make reported RTL hashes match persisted artifact bytes across platform newline behavior.
+- [x] Report process launch failures as infrastructure errors without model repair.
+- [x] Add release-facing changelog, release notes, version badges, and packaging documentation.
+- [x] Build and inspect the sdist and wheel, then install the wheel into a clean temporary
+  environment and run CLI/version smoke tests.
+- [x] Run the offline mux2 generate and counter4 repair demonstrations and inspect all evidence.
+- [x] Run tests: 105 passed, 0 failed, 0 skipped with system Icarus 13.0 enabled.
+- [x] Run Ruff, mypy across 27 source/test files, and Python bytecode compilation successfully.
+- [x] Build warning-free `0.1.0a1` sdist/wheel, verify 14 package modules plus README/LICENSE
+  metadata, and pass clean-environment CLI/doctor/version smoke tests.
+- [x] Run final diff and status checks and leave build/demo artifacts ignored or cleaned.
+
 ## Validation commands
 
 ```powershell
@@ -74,6 +96,7 @@ Last updated: 2026-07-14
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m mypy src tests
 .\.venv\Scripts\python.exe -m compileall -q src tests
+.\.venv\Scripts\python.exe -m build
 .\.venv\Scripts\python.exe -m verilog_agent doctor
 git diff --check
 git status --short
@@ -84,4 +107,7 @@ git status --short
 - The initial workstation PATH had no Icarus executables. The final local test run used
   repository-local portable binaries through explicit executable configuration; CI installs
   the distribution Icarus package. The portable `.tools` directory is ignored by Git.
+- The release-readiness audit used the system MSYS2 Icarus executables at
+  `C:\msys64\ucrt64\bin`; explicit `VVA_IVERILOG` and `VVA_VVP` values made the selected tools
+  auditable.
 - A failed implementation stage will be diagnosed before scope expands. Changes are confined to this repository and can be reviewed per file through Git.
