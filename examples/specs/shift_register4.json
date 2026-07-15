@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "task_name": "shift_register4_demo",
+  "mode": "generate",
+  "circuit_kind": "shift_register4",
+  "module_name": "shift_register4",
+  "description": "Four-bit enabled left shift register with synchronous reset",
+  "max_repair_retries": 3
+}
