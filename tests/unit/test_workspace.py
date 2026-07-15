@@ -8,11 +8,17 @@ from verilog_agent.errors import InfrastructureError, WorkspaceError
 from verilog_agent.workspace import prepare_output_directory, resolve_repository_path
 
 
-def test_rejects_absolute_and_traversal_paths(repository_root: Path) -> None:
+def test_rejects_host_absolute_path(repository_root: Path) -> None:
     with pytest.raises(WorkspaceError, match="absolute"):
         resolve_repository_path(repository_root, str(repository_root), must_exist=False)
+
+
+@pytest.mark.parametrize("value", ["../file.v", r"..\file.v"])
+def test_rejects_posix_and_windows_traversal(
+    repository_root: Path, value: str
+) -> None:
     with pytest.raises(WorkspaceError, match="traversal"):
-        resolve_repository_path(repository_root, "../escape", must_exist=False)
+        resolve_repository_path(repository_root, value, must_exist=False)
 
 
 @pytest.mark.parametrize(

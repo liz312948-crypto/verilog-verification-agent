@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from verilog_agent.errors import InfrastructureError, WorkspaceError
 
@@ -13,15 +13,18 @@ MAX_RTL_BYTES = 256 * 1024
 def resolve_repository_path(repository_root: Path, value: str, *, must_exist: bool) -> Path:
     if not value or "\x00" in value:
         raise WorkspaceError("path must be a non-empty relative path")
-    candidate_value = Path(value)
-    if candidate_value.is_absolute():
+    lexical_paths = (PurePosixPath(value), PureWindowsPath(value))
+    windows_value = lexical_paths[1]
+    if any(path.is_absolute() for path in lexical_paths):
         raise WorkspaceError(f"absolute paths are not allowed: {value}")
-    if candidate_value.drive:
+    if windows_value.drive:
         raise WorkspaceError(f"drive-qualified paths are not allowed: {value}")
-    if candidate_value.root:
+    if any(path.root for path in lexical_paths):
         raise WorkspaceError(f"rooted paths are not allowed: {value}")
-    if ".." in candidate_value.parts:
+    if any(".." in path.parts for path in lexical_paths):
         raise WorkspaceError(f"path traversal is not allowed: {value}")
+
+    candidate_value = Path(value)
     root = repository_root.resolve()
     candidate = (root / candidate_value).resolve()
     try:
