@@ -21,16 +21,16 @@ EDA platform, an arbitrary-Verilog specification engine, or a public untrusted-c
 
 ## Verification evidence
 
-The tagged alpha baseline contained 87 passing tests and an Ubuntu GitHub Actions workflow that
-installs Icarus Verilog before running all non-live tests. The suite exercises all seven correct
-examples, all seven deliberately broken examples, successful scripted repairs, strict retry
-exhaustion, real compiler/simulator failures, timeout termination, reports, and secret handling.
-Automated tests do not call a real LLM API.
+The final release candidate has 107 passing tests on both Windows locally and Ubuntu GitHub
+Actions CI. Ubuntu CI installs Icarus Verilog before running the complete non-live suite, and
+publication is gated on that workflow passing. The suite exercises all seven correct examples,
+all seven deliberately broken examples, successful scripted repairs, strict retry exhaustion,
+real compiler/simulator failures, timeout termination, reports, secret handling, packaging, and
+cross-platform path validation. Automated tests do not call a real LLM API.
 
-Release-readiness work additionally builds both sdist and wheel, inspects their members, installs
-the wheel into a fresh virtual environment outside the repository, and runs offline generate and
-repair demonstrations. Exact local results should be recorded in the audit handoff; these notes do
-not claim a PyPI publication.
+Release verification also builds both sdist and wheel, inspects their members, installs the wheel
+into a fresh virtual environment outside the repository, and runs offline generate and repair
+demonstrations. This project does not claim a PyPI publication.
 
 ## Security boundary
 
@@ -39,6 +39,10 @@ tool availability, applies compile/simulation timeouts, bounds logs, validates o
 with an exact fixed port contract, and filters dangerous model-output constructs. These controls
 are defense in depth, not an OS sandbox. Use a separately hardened execution environment if HDL or
 tool inputs may be hostile.
+
+Repository path validation applies both `PurePosixPath` and `PureWindowsPath` lexical semantics
+on every host. Windows absolute, drive-qualified, rooted, and UNC paths, plus POSIX and Windows
+parent traversal, are therefore rejected consistently on Windows and Ubuntu.
 
 ## Known limitations
 

@@ -59,7 +59,8 @@ Last updated: 2026-07-14
 
 ### Phase 6: final verification and audit
 
-- [x] Run tests: 87 passed, 0 failed, 0 skipped with portable Icarus enabled.
+- [x] Complete the initial implementation test pass; the consolidated final release count is
+  recorded in Phase 7.
 - [x] Run lint: Ruff passed.
 - [x] Run type checking: mypy passed for 26 source and test files.
 - [x] Run Python bytecode compilation.
@@ -79,11 +80,14 @@ Last updated: 2026-07-14
 - [x] Retain invalid model-response hashes without persisting the raw rejected response.
 - [x] Make reported RTL hashes match persisted artifact bytes across platform newline behavior.
 - [x] Report process launch failures as infrastructure errors without model repair.
+- [x] Apply POSIX and Windows lexical path validation on every host and verify the Windows-style
+  rejection cases in Ubuntu GitHub Actions CI.
 - [x] Add release-facing changelog, release notes, version badges, and packaging documentation.
 - [x] Build and inspect the sdist and wheel, then install the wheel into a clean temporary
   environment and run CLI/version smoke tests.
 - [x] Run the offline mux2 generate and counter4 repair demonstrations and inspect all evidence.
-- [x] Run tests: 105 passed, 0 failed, 0 skipped with system Icarus 13.0 enabled.
+- [x] Run tests: 107 passed, 0 failed, 0 skipped on Windows locally and in Ubuntu GitHub Actions
+  CI with real Icarus enabled.
 - [x] Run Ruff, mypy across 27 source/test files, and Python bytecode compilation successfully.
 - [x] Build warning-free `0.1.0a1` sdist/wheel, verify 14 package modules plus README/LICENSE
   metadata, and pass clean-environment CLI/doctor/version smoke tests.
